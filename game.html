@@ -1,0 +1,176 @@
+<!--
+/*
+ * Copyright 2016, Gregg Tavares.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following disclaimer
+ * in the documentation and/or other materials provided with the
+ * distribution.
+ *     * Neither the name of Gregg Tavares. nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Clean</title>
+  <style>
+     body {
+         margin: 0;
+     }
+     #playfield {
+         display: block;
+         width: 100vw;
+         height: 100vh;
+     }
+  </style>
+</head>
+<body>
+  <canvas id="playfield"></canvas>
+</body>
+<script>
+const happyfuntimes = require('happyfuntimes');
+
+const globals = {
+  itemSize: 15,
+  playerId: 0,
+  frameCount: 0,
+  players: [],
+  ctx: document.querySelector("#playfield").getContext("2d"),
+};
+
+function randInt(min, max) {
+  if (max === undefined) {
+    max = min;
+    min = 0;
+  }
+  return Math.random() * (max - min) + min | 0;
+}
+
+function pickRandomPosition() {
+  return {
+    x: 30 + randInt(globals.ctx.canvas.width  - 60),
+    y: 30 + randInt(globals.ctx.canvas.height - 60),
+  };
+}
+
+class Goal {
+  constructor() {
+    this.pickGoal();
+    this.radiusesSquared = globals.itemSize * 2 * globals.itemSize;
+  }
+
+  pickGoal() {
+    this.position = pickRandomPosition();
+  }
+
+  isHit(otherPosition) {
+    const dx = otherPosition.x - this.position.x;
+    const dy = otherPosition.y - this.position.y;
+    return dx * dx + dy * dy < this.radiusesSquared;
+  }
+}
+
+class Player {
+  constructor(netPlayer, name) {
+    this.netPlayer = netPlayer;
+    this.name = name;
+    this.position = pickRandomPosition();
+
+    const hue = randInt(360);
+    const sat = randInt(2) * 50 + 50;
+    const val = 50;
+    this.color = "hsl(" + hue  + "," + sat + "%," + val + "%)";
+
+    netPlayer.addEventListener('disconnect', Player.prototype.disconnect.bind(this));
+    netPlayer.addEventListener('move', Player.prototype.movePlayer.bind(this));
+    netPlayer.sendCmd('color', this.color);
+  }
+
+  disconnect() {
+    const ndx = globals.players.indexOf(this);
+    if (ndx >= 0) {
+      globals.players.splice(ndx, 1);
+    }
+  }
+
+  movePlayer(cmd) {
+    this.position.x = Math.floor(cmd.x * globals.ctx.canvas.clientWidth);
+    this.position.y = Math.floor(cmd.y * globals.ctx.canvas.clientHeight);
+
+    if (globals.goal.isHit(this.position)) {
+      // This will generate a 'scored' event on the client (player's smartphone)
+      // that corresponds to this player.
+      this.netPlayer.sendCmd('scored', {
+        points: randInt(5, 11), // 5 to 10 points
+      });
+      globals.goal.pickGoal();
+    }
+  }
+}
+
+const server = new happyfuntimes.GameServer();
+globals.goal = new Goal();
+
+// A new player has arrived.
+server.on('playerconnect', function(netPlayer) {
+  globals.players.push(new Player(netPlayer, "Player" + (++globals.playerId)));
+});
+
+function drawItem(ctx, position, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(position.x, position.y, globals.itemSize, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+function resize(canvas) {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+}
+
+function render() {
+  ++globals.frameCount;
+
+  const ctx = globals.ctx;
+
+  resize(ctx.canvas);
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  globals.players.forEach(function(player) {
+    drawItem(ctx, player.position, player.color);
+  });
+
+  drawItem(ctx, globals.goal.position, (globals.frameCount & 4) ? "red" : "pink");
+
+  requestAnimationFrame(render);
+};
+requestAnimationFrame(render);
+</script>
+</html>
+

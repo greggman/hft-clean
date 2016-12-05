@@ -1,0 +1,48 @@
+{
+  "name": "hft-clean",
+  "productName": "happyfuntimes clean example",
+  "description": "A clean example",
+  "private": false,
+  "version": "0.0.1",
+  "build": {
+    "appId": "com.greggman.hftClean",
+    "asar": false,
+    "mac": {
+      "category": "public.app-category.games"
+    }
+  },
+  "main": "main.js",
+  "scripts": {
+    "start": "cross-env NODE_ENV=development electron main.js",
+    "startp": "cross-env NODE_ENV=production electron main.js",
+    "pack": "build --dir",
+    "dist": "build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greggman/hft-clean.git"
+  },
+  "keywords": [
+    "local",
+    "multiplayer",
+    "game"
+  ],
+  "author": "Gregg Tavares",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/greggman/hft-clean/issues"
+  },
+  "homepage": "https://github.com/greggman/hft-clean#readme",
+  "dependencies": {
+    "happyfuntimes": "^0.2.0",
+    "hft-game-utils": "^1.0.0",
+    "hft-sample-ui": "^1.0.0",
+    "optionator": "^0.8.2",
+    "requirejs": "^2.3.2"
+  },
+  "devDependencies": {
+    "cross-env": "^3.1.3",
+    "electron": "^1.4.5",
+    "electron-builder": "^8.6.0"
+  }
+}
